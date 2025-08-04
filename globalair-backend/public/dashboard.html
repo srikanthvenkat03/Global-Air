@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>GlobalAir Full Dashboard</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f7f6; margin: 40px;}
+        .tab-container { width: 100%; max-width: 700px; margin: auto; }
+        .tab-nav { overflow: hidden; border-bottom: 1px solid #ccc; }
+        .tab-nav button { background-color: inherit; float: left; border: none; outline: none; cursor: pointer; padding: 14px 16px; transition: 0.3s; font-size: 17px; }
+        .tab-nav button:hover { background-color: #ddd; }
+        .tab-nav button.active { background-color: #ccc; }
+        .tab-content { display: none; padding: 20px; border: 1px solid #ccc; border-top: none; background-color: white; }
+        .tab-content h2 { margin-top: 0; }
+        input, select, button { font-size: 16px; padding: 10px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc; width: calc(100% - 22px); }
+        .form-button { width: 100%; background-color: #007bff; color: white; cursor: pointer; }
+        .result { margin-top: 20px; padding: 15px; background-color: #e9ecef; border-radius: 5px; min-height: 40px; }
+    </style>
+</head>
+<body>
+
+    <div class="tab-container">
+        <h1>GlobalAir Master Dashboard</h1>
+
+        <div class="tab-nav">
+            <button class="tab-link active" onclick="openTab(event, 'Flights')">Flight Path</button>
+            <button class="tab-link" onclick="openTab(event, 'Baggage')">Baggage System</button>
+            <button class="tab-link" onclick="openTab(event, 'Lost')">Lost Baggage</button>
+        </div>
+
+        <div id="Flights" class="tab-content" style="display:block;">
+            <h2>Flight Path Finder</h2>
+            <input type="text" id="start" placeholder="Start Airport (e.g., MAA)">
+            <input type="text" id="end" placeholder="End Airport (e.g., SFO)">
+            <select id="weightType">
+                <option value="distance">By Distance</option>
+                <option value="delay">By Delay</option>
+                <option value="cost">By Cost</option>
+            </select>
+            <button class="form-button" onclick="findPath()">Find Shortest Path</button>
+            <div class="result" id="path-result">Result will be shown here...</div>
+        </div>
+
+        <div id="Baggage" class="tab-content">
+            <h2>Baggage Flow System</h2>
+            <input type="text" id="bag-id" placeholder="Baggage ID (e.g., BAG123)">
+            <input type="text" id="bag-type" placeholder="Baggage Type (e.g., Checked)">
+            <input type="number" id="bag-priority" placeholder="Passenger Priority (1-3)">
+            <input type="number" id="bag-risk" placeholder="Security Risk (1-3)">
+            <button class="form-button" onclick="addBaggage()">Add Baggage</button>
+            <div class="result" id="baggage-result">Result will be shown here...</div>
+        </div>
+
+        <div id="Lost" class="tab-content">
+            <h2>Lost Baggage Tracker</h2>
+            <input type="text" id="lost-bag-id" placeholder="Baggage ID to Trace">
+            <button class="form-button" onclick="traceBaggage()">Trace Baggage</button>
+            <div class="result" id="lost-result">Result will be shown here...</div>
+        </div>
+
+    </div>
+
+    <script>
+        function openTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tablinks = document.getElementsByClassName("tab-link");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " active";
+        }
+
+        // --- API Call Functions ---
+        async function findPath() {
+            const body = {
+                start: document.getElementById('start').value.toUpperCase(),
+                end: document.getElementById('end').value.toUpperCase(),
+                weightType: document.getElementById('weightType').value
+            };
+            const response = await fetch('/api/flights/shortest-path', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const data = await response.json();
+            document.getElementById('path-result').innerHTML = Array.isArray(data) && data.length > 0 ? `Path: ${data.join(' &rarr; ')}` : 'No path found.';
+        }
+
+        async function addBaggage() {
+            const body = {
+                id: document.getElementById('bag-id').value,
+                type: document.getElementById('bag-type').value,
+                passengerPriority: parseInt(document.getElementById('bag-priority').value),
+                securityRisk: parseInt(document.getElementById('bag-risk').value)
+            };
+            const response = await fetch('/api/baggage/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const data = await response.json();
+            document.getElementById('baggage-result').innerText = data.message;
+        }
+
+        async function traceBaggage() {
+            const id = document.getElementById('lost-bag-id').value;
+            const response = await fetch(`/api/lost-baggage/trace/${id}`);
+            const data = await response.json();
+            document.getElementById('lost-result').innerText = `ID: ${data.id}, Last Location: ${data.lastKnownLocation}`;
+        }
+    </script>
+</body>
+</html>
